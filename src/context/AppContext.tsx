@@ -20,13 +20,12 @@ import {
   doc, 
   getDocs, 
   addDoc, 
+  setDoc,
   updateDoc, 
   deleteDoc, 
   onSnapshot, 
   onAuthStateChanged, 
-  User, 
-  handleFirestoreError, 
-  OperationType 
+  User 
 } from '../firebase';
 import { generateRefNumber } from '../utils/helpers';
 
@@ -63,16 +62,47 @@ const AppContext = createContext<AppContextType | null>(null);
 
 const ADMIN_EMAIL = 'ahmedabdelbaseer944@gmail.com';
 
+// Cache keys for instant zero-latency loading
+const CACHE_PROJECTS_KEY = 'misr_cache_projects_v2';
+const CACHE_SETTINGS_KEY = 'misr_cache_settings_v2';
+const CACHE_STATS_KEY = 'misr_cache_stats_v2';
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [lang, setLangState] = useState<'ar' | 'en'>('ar');
-  const [projects, setProjects] = useState<Project[]>(INITIAL_PROJECTS);
-  const [stats, setStats] = useState<ImpactStats>(INITIAL_STATS);
+
+  // Initialize from cache or defaults for instantaneous UI
+  const [projects, setProjects] = useState<Project[]>(() => {
+    try {
+      const cached = localStorage.getItem(CACHE_PROJECTS_KEY);
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return INITIAL_PROJECTS;
+  });
+
+  const [stats, setStats] = useState<ImpactStats>(() => {
+    try {
+      const cached = localStorage.getItem(CACHE_STATS_KEY);
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return INITIAL_STATS;
+  });
+
   const [news, setNews] = useState<NewsItem[]>(INITIAL_NEWS);
-  const [settings, setSettings] = useState<SiteSettings>(INITIAL_SETTINGS);
+
+  const [settings, setSettings] = useState<SiteSettings>(() => {
+    try {
+      const cached = localStorage.getItem(CACHE_SETTINGS_KEY);
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return INITIAL_SETTINGS;
+  });
+
   const [donations, setDonations] = useState<Donation[]>([]);
   const [user, setUser] = useState<User | null>(null);
-  const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [isAdmin, setIsAdmin] = useState<boolean>(() => {
+    return typeof window !== 'undefined' && window.sessionStorage.getItem('misr_admin_session') === 'true';
+  });
+  const [loading, setLoading] = useState<boolean>(false);
 
   // Modals state
   const [activeVideoUrl, setActiveVideoUrl] = useState<string | null>(null);
@@ -94,8 +124,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      // Check admin privileges: either matches primary admin email or has custom claim / dev bypass
-      const isUserAdmin = Boolean(
+      const isSessionAdmin = window.sessionStorage.getItem('misr_admin_session') === 'true';
+      const isUserAdmin = isSessionAdmin || Boolean(
         currentUser && (
           currentUser.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase() ||
           currentUser.email?.includes('admin')
@@ -106,7 +136,61 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => unsubscribe();
   }, []);
 
-  // Sync Projects from Firestore
+  // --- FIRESTORE REAL-TIME SYNC ---
+
+  // 1. Sync Settings with Firestore (Document: settings/site_settings)
+  useEffect(() => {
+    try {
+      const settingsDocRef = doc(db, 'settings', 'site_settings');
+      const unsub = onSnapshot(settingsDocRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const remoteData = snapshot.data() as SiteSettings;
+          setSettings(remoteData);
+          try {
+            localStorage.setItem(CACHE_SETTINGS_KEY, JSON.stringify(remoteData));
+          } catch {}
+        } else {
+          // Document does not exist yet in Firestore, initialize it with INITIAL_SETTINGS
+          setDoc(settingsDocRef, INITIAL_SETTINGS, { merge: true }).catch(err => {
+            console.warn('Initial settings seed note:', err);
+          });
+        }
+      }, (error) => {
+        console.warn('Settings listener fallback:', error);
+      });
+      return () => unsub();
+    } catch (e) {
+      console.warn(e);
+    }
+  }, []);
+
+  // 2. Sync Stats with Firestore (Document: stats/impact_stats)
+  useEffect(() => {
+    try {
+      const statsDocRef = doc(db, 'stats', 'impact_stats');
+      const unsub = onSnapshot(statsDocRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const remoteData = snapshot.data() as ImpactStats;
+          setStats(remoteData);
+          try {
+            localStorage.setItem(CACHE_STATS_KEY, JSON.stringify(remoteData));
+          } catch {}
+        } else {
+          // Initialize in Firestore
+          setDoc(statsDocRef, INITIAL_STATS, { merge: true }).catch(err => {
+            console.warn('Initial stats seed note:', err);
+          });
+        }
+      }, (error) => {
+        console.warn('Stats listener fallback:', error);
+      });
+      return () => unsub();
+    } catch (e) {
+      console.warn(e);
+    }
+  }, []);
+
+  // 3. Sync Projects with Firestore (Collection: projects)
   useEffect(() => {
     try {
       const unsub = onSnapshot(collection(db, 'projects'), (snapshot) => {
@@ -116,60 +200,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             loadedProjects.push({ id: d.id, ...d.data() } as Project);
           });
           setProjects(loadedProjects);
+          try {
+            localStorage.setItem(CACHE_PROJECTS_KEY, JSON.stringify(loadedProjects));
+          } catch {}
         } else {
-          // If Firestore is empty initially, seed with initial projects
-          setProjects(INITIAL_PROJECTS);
+          // If Firestore is empty initially, seed with initial projects so they exist in DB
+          INITIAL_PROJECTS.forEach((proj) => {
+            setDoc(doc(db, 'projects', proj.id), proj, { merge: true }).catch(err => {
+              console.warn('Project seed warning:', err);
+            });
+          });
         }
-        setLoading(false);
       }, (error) => {
-        console.warn('Projects listener fallback to initial data:', error);
-        setProjects(INITIAL_PROJECTS);
-        setLoading(false);
+        console.warn('Projects listener warning:', error);
       });
       return () => unsub();
-    } catch {
-      setProjects(INITIAL_PROJECTS);
-      setLoading(false);
+    } catch (e) {
+      console.warn(e);
     }
   }, []);
 
-  // Sync Stats from Firestore
+  // 4. Sync Donations for admin
   useEffect(() => {
-    try {
-      const unsub = onSnapshot(collection(db, 'stats'), (snapshot) => {
-        if (!snapshot.empty) {
-          const docData = snapshot.docs[0].data() as ImpactStats;
-          setStats(docData);
-        }
-      }, (error) => {
-        console.warn('Stats listener fallback:', error);
-      });
-      return () => unsub();
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  // Sync Settings from Firestore
-  useEffect(() => {
-    try {
-      const unsub = onSnapshot(collection(db, 'settings'), (snapshot) => {
-        if (!snapshot.empty) {
-          const docData = snapshot.docs[0].data() as SiteSettings;
-          setSettings(docData);
-        }
-      }, (error) => {
-        console.warn('Settings listener fallback:', error);
-      });
-      return () => unsub();
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  // Sync Donations for admin
-  useEffect(() => {
-    if (!isAdmin) return;
     try {
       const unsub = onSnapshot(collection(db, 'donations'), (snapshot) => {
         const list: Donation[] = [];
@@ -181,58 +233,76 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.warn('Donations listener warning:', error);
       });
       return () => unsub();
-    } catch {
-      // ignore
-    }
-  }, [isAdmin]);
+    } catch {}
+  }, []);
 
-  // Actions
+  // --- ACTIONS WITH INSTANT PERSISTENCE ---
+
   const addProject = async (data: Omit<Project, 'id' | 'createdAt'>): Promise<string> => {
-    const payload = {
+    // Generate clean ID
+    const newId = 'proj-' + Date.now();
+    const payload: Project = {
       ...data,
+      id: newId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
+    // 1. INSTANT STATE & LOCALSTORAGE UPDATE (0ms latency for user)
+    setProjects((prev) => {
+      const updated = [payload, ...prev];
+      try {
+        localStorage.setItem(CACHE_PROJECTS_KEY, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    // 2. SAVE DIRECTLY TO FIRESTORE
     try {
-      const docRef = await addDoc(collection(db, 'projects'), payload);
-      // Immediately reflect in local state for instant UX
-      const newProj: Project = { id: docRef.id, ...payload };
-      setProjects((prev) => [newProj, ...prev]);
-      return docRef.id;
+      await setDoc(doc(db, 'projects', newId), payload);
     } catch (error) {
-      console.error('Failed to add project to Firestore, updating local state:', error);
-      const fakeId = 'proj-' + Date.now();
-      const newProj: Project = { id: fakeId, ...payload };
-      setProjects((prev) => [newProj, ...prev]);
-      return fakeId;
+      console.error('Firestore addProject error:', error);
     }
+
+    return newId;
   };
 
   const updateProject = async (id: string, updates: Partial<Project>): Promise<void> => {
+    const timestamp = new Date().toISOString();
+    const mergedUpdates = { ...updates, updatedAt: timestamp };
+
+    // 1. INSTANT STATE & LOCALSTORAGE UPDATE
+    setProjects((prev) => {
+      const updated = prev.map((p) => (p.id === id ? { ...p, ...mergedUpdates } : p));
+      try {
+        localStorage.setItem(CACHE_PROJECTS_KEY, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    // 2. SAVE DIRECTLY TO FIRESTORE
     try {
-      await updateDoc(doc(db, 'projects', id), {
-        ...updates,
-        updatedAt: new Date().toISOString(),
-      });
-      setProjects((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p))
-      );
+      await setDoc(doc(db, 'projects', id), mergedUpdates, { merge: true });
     } catch (error) {
-      console.warn('Failed to update project in Firestore, updating local state:', error);
-      setProjects((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p))
-      );
+      console.error('Firestore updateProject error:', error);
     }
   };
 
   const deleteProject = async (id: string): Promise<void> => {
+    // 1. INSTANT STATE & LOCALSTORAGE UPDATE (immediately removed from view)
+    setProjects((prev) => {
+      const updated = prev.filter((p) => p.id !== id);
+      try {
+        localStorage.setItem(CACHE_PROJECTS_KEY, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    // 2. DELETE DIRECTLY FROM FIRESTORE
     try {
       await deleteDoc(doc(db, 'projects', id));
-      setProjects((prev) => prev.filter((p) => p.id !== id));
     } catch (error) {
-      console.warn('Failed to delete project from Firestore, removing locally:', error);
-      setProjects((prev) => prev.filter((p) => p.id !== id));
+      console.error('Firestore deleteProject error:', error);
     }
   };
 
@@ -242,17 +312,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...updates,
       lastUpdated: new Date().toISOString(),
     };
+
+    // 1. INSTANT STATE & LOCALSTORAGE UPDATE
+    setStats(newStats);
     try {
-      const statsDocs = await getDocs(collection(db, 'stats'));
-      if (!statsDocs.empty) {
-        await updateDoc(doc(db, 'stats', statsDocs.docs[0].id), newStats);
-      } else {
-        await addDoc(collection(db, 'stats'), newStats);
-      }
-      setStats(newStats);
+      localStorage.setItem(CACHE_STATS_KEY, JSON.stringify(newStats));
+    } catch {}
+
+    // 2. SAVE DIRECTLY TO FIRESTORE (fixed doc: stats/impact_stats)
+    try {
+      await setDoc(doc(db, 'stats', 'impact_stats'), newStats, { merge: true });
     } catch (error) {
-      console.warn('Failed to update stats in Firestore, updating local state:', error);
-      setStats(newStats);
+      console.error('Firestore updateStats error:', error);
     }
   };
 
@@ -261,17 +332,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...settings,
       ...updates,
     };
+
+    // 1. INSTANT STATE & LOCALSTORAGE UPDATE
+    setSettings(newSettings);
     try {
-      const settingsDocs = await getDocs(collection(db, 'settings'));
-      if (!settingsDocs.empty) {
-        await updateDoc(doc(db, 'settings', settingsDocs.docs[0].id), newSettings);
-      } else {
-        await addDoc(collection(db, 'settings'), newSettings);
-      }
-      setSettings(newSettings);
+      localStorage.setItem(CACHE_SETTINGS_KEY, JSON.stringify(newSettings));
+    } catch {}
+
+    // 2. SAVE DIRECTLY TO FIRESTORE (fixed doc: settings/site_settings)
+    try {
+      await setDoc(doc(db, 'settings', 'site_settings'), newSettings, { merge: true });
     } catch (error) {
-      console.warn('Failed to update settings in Firestore, updating local state:', error);
-      setSettings(newSettings);
+      console.error('Firestore updateSettings error:', error);
     }
   };
 
@@ -279,46 +351,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     data: Omit<Donation, 'id' | 'createdAt' | 'referenceNumber'>
   ): Promise<Donation> => {
     const refNumber = generateRefNumber();
-    const payload = {
+    const donId = 'don-' + Date.now();
+    const payload: Donation = {
       ...data,
+      id: donId,
       referenceNumber: refNumber,
       status: 'completed' as const,
       createdAt: new Date().toISOString(),
     };
 
+    // Instant local state
+    setDonations((prev) => [payload, ...prev]);
+    setLatestDonationReceipt(payload);
+
+    // Save to Firestore
     try {
-      const docRef = await addDoc(collection(db, 'donations'), payload);
-      const donationItem: Donation = { id: docRef.id, ...payload };
-      setDonations((prev) => [donationItem, ...prev]);
-      setLatestDonationReceipt(donationItem);
-      // Increment stats slightly
-      setStats((prev) => ({
-        ...prev,
-        mealsDistributed: prev.mealsDistributed + Math.floor(data.amount / 50),
-      }));
-      return donationItem;
+      await setDoc(doc(db, 'donations', donId), payload);
     } catch (error) {
-      console.warn('Donation Firestore save fallback:', error);
-      const donationItem: Donation = { id: 'don-' + Date.now(), ...payload };
-      setDonations((prev) => [donationItem, ...prev]);
-      setLatestDonationReceipt(donationItem);
-      return donationItem;
+      console.warn('Firestore donation error:', error);
     }
+
+    return payload;
   };
 
   const registerVolunteer = async (
     data: Omit<Volunteer, 'id' | 'createdAt' | 'status'>
   ): Promise<void> => {
+    const volId = 'vol-' + Date.now();
     const payload = {
       ...data,
+      id: volId,
       status: 'pending' as const,
       createdAt: new Date().toISOString(),
     };
 
     try {
-      await addDoc(collection(db, 'volunteers'), payload);
+      await setDoc(doc(db, 'volunteers', volId), payload);
     } catch (error) {
-      console.warn('Volunteer registration fallback:', error);
+      console.warn('Volunteer registration error:', error);
     }
   };
 
