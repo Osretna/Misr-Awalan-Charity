@@ -16,6 +16,7 @@ import {
   Star, 
   Image, 
   Video, 
+  Play,
   Save, 
   Lock, 
   LogIn, 
@@ -51,7 +52,8 @@ export const AdminDashboard: React.FC = () => {
     updateProject, 
     deleteProject, 
     updateStats, 
-    updateSettings 
+    updateSettings,
+    openVideoModal
   } = useApp();
 
   const strings = t[lang];
@@ -128,6 +130,52 @@ export const AdminDashboard: React.FC = () => {
   const [seoMetaTitle, setSeoMetaTitle] = useState(settings.metaTitle);
   const [seoMetaDesc, setSeoMetaDesc] = useState(settings.metaDescription);
   const [seoKeywords, setSeoKeywords] = useState(settings.keywords);
+
+  // --- DELETE CONFIRMATION STATE (Works 100% in sandboxed iframes) ---
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [isDeletingProject, setIsDeletingProject] = useState(false);
+
+  // Sync settings whenever updated or loaded from Firestore
+  React.useEffect(() => {
+    if (settings) {
+      setOrgLogoUrl(settings.logoUrl || '');
+      setOrgNameAr(settings.orgNameAr || '');
+      setOrgNameEn(settings.orgNameEn || '');
+      setSloganAr(settings.sloganAr || '');
+      setLicenseNumber(settings.licenseNumber || '');
+      setPhone1(settings.phone1 || '');
+      setPhone2(settings.phone2 || '');
+      setAddress(settings.address || '');
+      setOfficialEmail(settings.officialEmail || '');
+      setTaxNumber(settings.taxNumber || '');
+      setAboutBrief(settings.aboutBrief || '');
+      setAboutVision(settings.aboutVision || '');
+      setAboutMission(settings.aboutMission || '');
+      setAboutHistory(settings.aboutHistory || '');
+      if (settings.values) setValuesList(settings.values);
+      if (settings.boardMembers) setBoardList(settings.boardMembers);
+      if (settings.bankAccounts) setBankAccountsList(settings.bankAccounts);
+      setVodafoneCashCode(settings.vodafoneCashCode || '');
+      setOpPayCode(settings.opPayCode || '');
+      setSmsNumber(settings.smsNumber || '');
+      setInstaPayAddress(settings.instaPayAddress || '');
+      setSeoMetaTitle(settings.metaTitle || '');
+      setSeoMetaDesc(settings.metaDescription || '');
+      setSeoKeywords(settings.keywords || '');
+    }
+  }, [settings]);
+
+  // Sync stats whenever updated or loaded from Firestore
+  React.useEffect(() => {
+    if (stats) {
+      setStatFamilies(stats.familiesHelped || 0);
+      setStatMeals(stats.mealsDistributed || 0);
+      setStatOrphans(stats.orphansSponsored || 0);
+      setStatWells(stats.waterWellsBuilt || 0);
+      setStatMedical(stats.medicalConvoys || 0);
+      setStatHomes(stats.homesRestored || 0);
+    }
+  }, [stats]);
 
   // AUTHENTICATION LOGIC
   const handleLoginSubmit = async (e: React.FormEvent) => {
@@ -210,45 +258,57 @@ export const AdminDashboard: React.FC = () => {
 
   const handleSaveProject = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formTitle || !formShortDesc || !formCoverImage) return;
+    if (!formTitle.trim() || !formShortDesc.trim() || !formCoverImage.trim()) {
+      showToast(lang === 'ar' ? 'يرجى ملء الحقول الإلزامية (العنوان، الوصف المختصر، صورة الغلاف)' : 'Please fill required fields');
+      return;
+    }
 
     setSavingProject(true);
     try {
       const payload = {
-        title: formTitle,
+        title: formTitle.trim(),
         category: formCategory,
-        shortDescription: formShortDesc,
-        fullDescription: formFullDesc || formShortDesc,
-        coverImage: formCoverImage,
-        videoUrl: formVideoUrl || undefined,
-        location: formLocation || 'شبرا الخيمة، مصر',
+        shortDescription: formShortDesc.trim(),
+        fullDescription: (formFullDesc || formShortDesc).trim(),
+        coverImage: formCoverImage.trim(),
+        videoUrl: formVideoUrl.trim() || '',
+        location: formLocation.trim() || 'شبرا الخيمة، مصر',
         targetAmount: Number(formTargetAmount) || 0,
         raisedAmount: Number(formRaisedAmount) || 0,
         beneficiaries: Number(formBeneficiaries) || 0,
-        isFeatured: formIsFeatured,
+        isFeatured: Boolean(formIsFeatured),
         status: formStatus,
       };
 
       if (editingProjectId) {
         await updateProject(editingProjectId, payload);
-        showToast(lang === 'ar' ? 'تم تعديل المشروع وتحديثه بنجاح!' : 'Project updated!');
+        showToast(lang === 'ar' ? '✅ تم حفظ تعديلات المشروع في قاعدة البيانات فوراً!' : 'Project updated in Firestore!');
       } else {
         await addProject(payload);
-        showToast(lang === 'ar' ? 'تم إضافة المشروع ونشره فوراً على الموقع!' : 'Project added and published!');
+        showToast(lang === 'ar' ? '✅ تم نشر وإضافة المشروع الجديد فوراً في قاعدة البيانات!' : 'Project created in Firestore!');
       }
 
       setIsProjectModalOpen(false);
     } catch (err) {
-      console.error(err);
+      console.error('Error saving project:', err);
+      showToast(lang === 'ar' ? '❌ حدث خطأ أثناء الحفظ، يرجى إعادة المحاولة' : 'Failed to save project');
     } finally {
       setSavingProject(false);
     }
   };
 
-  const handleDeleteProject = async (id: string) => {
-    if (confirm(lang === 'ar' ? 'هل أنت متأكد من حذف هذا المشروع؟' : 'Delete this project?')) {
-      await deleteProject(id);
-      showToast(lang === 'ar' ? 'تم حذف المشروع من قاعدة البيانات.' : 'Project deleted.');
+  const confirmDeleteProject = async () => {
+    if (!projectToDelete) return;
+    setIsDeletingProject(true);
+    try {
+      await deleteProject(projectToDelete.id);
+      showToast(lang === 'ar' ? '✅ تم حذف المشروع نهائياً وبنجاح من الموقع وقاعدة البيانات.' : 'Project deleted from Firestore.');
+      setProjectToDelete(null);
+    } catch (err) {
+      console.error('Error deleting project:', err);
+      showToast(lang === 'ar' ? '❌ حدث خطأ أثناء الحذف.' : 'Failed to delete project');
+    } finally {
+      setIsDeletingProject(false);
     }
   };
 
@@ -257,26 +317,27 @@ export const AdminDashboard: React.FC = () => {
     e.preventDefault();
     try {
       await updateSettings({
-        logoUrl: orgLogoUrl,
-        orgNameAr,
-        orgNameEn,
-        sloganAr,
-        licenseNumber,
-        phone1,
-        phone2,
-        address,
-        officialEmail,
-        taxNumber,
-        aboutBrief,
-        aboutVision,
-        aboutMission,
-        aboutHistory,
+        logoUrl: orgLogoUrl.trim(),
+        orgNameAr: orgNameAr.trim(),
+        orgNameEn: orgNameEn.trim(),
+        sloganAr: sloganAr.trim(),
+        licenseNumber: licenseNumber.trim(),
+        phone1: phone1.trim(),
+        phone2: phone2.trim(),
+        address: address.trim(),
+        officialEmail: officialEmail.trim(),
+        taxNumber: taxNumber.trim(),
+        aboutBrief: aboutBrief.trim(),
+        aboutVision: aboutVision.trim(),
+        aboutMission: aboutMission.trim(),
+        aboutHistory: aboutHistory.trim(),
         values: valuesList,
         boardMembers: boardList,
       });
-      showToast(lang === 'ar' ? 'تم حفظ كافة بيانات المنظمة و"عن المنظمة" وتحديثها في الموقع!' : 'Organization info updated successfully!');
+      showToast(lang === 'ar' ? '✅ تم حفظ وتحديث بيانات المنظمة في قاعدة بيانات Firebase فوراً!' : 'Organization info updated in Firestore!');
     } catch (err) {
       console.error(err);
+      showToast(lang === 'ar' ? '❌ حدث خطأ أثناء الحفظ، يرجى المحاولة مرة أخرى.' : 'Error updating organization info');
     }
   };
 
@@ -286,14 +347,15 @@ export const AdminDashboard: React.FC = () => {
     try {
       await updateSettings({
         bankAccounts: bankAccountsList,
-        vodafoneCashCode,
-        opPayCode,
-        smsNumber,
-        instaPayAddress,
+        vodafoneCashCode: vodafoneCashCode.trim(),
+        opPayCode: opPayCode.trim(),
+        smsNumber: smsNumber.trim(),
+        instaPayAddress: instaPayAddress.trim(),
       });
-      showToast(lang === 'ar' ? 'تم تحديث أرقام وحسابات التبرع بنجاح!' : 'Donation channels saved!');
+      showToast(lang === 'ar' ? '✅ تم تحديث أرقام وحسابات التبرع في قاعدة البيانات فوراً!' : 'Donation channels saved!');
     } catch (err) {
       console.error(err);
+      showToast(lang === 'ar' ? '❌ حدث خطأ أثناء الحفظ.' : 'Error updating donation channels');
     }
   };
 
@@ -315,6 +377,7 @@ export const AdminDashboard: React.FC = () => {
 
   const handleDeleteBank = (index: number) => {
     setBankAccountsList(prev => prev.filter((_, i) => i !== index));
+    showToast(lang === 'ar' ? 'تم حذف الحساب من القائمة (اضغط حفظ بالأسفل للتأكيد)' : 'Bank removed from list');
   };
 
   // Values management helpers
@@ -335,6 +398,7 @@ export const AdminDashboard: React.FC = () => {
 
   const handleDeleteValue = (index: number) => {
     setValuesList(prev => prev.filter((_, i) => i !== index));
+    showToast(lang === 'ar' ? 'تم حذف القيمة من القائمة (اضغط حفظ بالأسفل للتأكيد)' : 'Value removed from list');
   };
 
   // Board management helpers
@@ -355,6 +419,7 @@ export const AdminDashboard: React.FC = () => {
 
   const handleDeleteBoardMember = (index: number) => {
     setBoardList(prev => prev.filter((_, i) => i !== index));
+    showToast(lang === 'ar' ? 'تم حذف العضو من القائمة (اضغط حفظ بالأسفل للتأكيد)' : 'Member removed from list');
   };
 
   // --- SAVE STATS ---
@@ -369,9 +434,10 @@ export const AdminDashboard: React.FC = () => {
         medicalConvoys: Number(statMedical),
         homesRestored: Number(statHomes),
       });
-      showToast(lang === 'ar' ? 'تم تحديث أرقام الأثر في قاعدة البيانات!' : 'Stats updated in Firestore!');
+      showToast(lang === 'ar' ? '✅ تم تحديث أرقام وإحصائيات الأثر في قاعدة البيانات فوراً!' : 'Stats updated in Firestore!');
     } catch (err) {
       console.error(err);
+      showToast(lang === 'ar' ? '❌ حدث خطأ أثناء تحديث الإحصائيات.' : 'Error updating stats');
     }
   };
 
@@ -380,15 +446,17 @@ export const AdminDashboard: React.FC = () => {
     e.preventDefault();
     try {
       await updateSettings({
-        metaTitle: seoMetaTitle,
-        metaDescription: seoMetaDesc,
-        keywords: seoKeywords,
+        metaTitle: seoMetaTitle.trim(),
+        metaDescription: seoMetaDesc.trim(),
+        keywords: seoKeywords.trim(),
       });
-      showToast(lang === 'ar' ? 'تم حفظ إعدادات SEO بنجاح!' : 'SEO settings saved!');
+      showToast(lang === 'ar' ? '✅ تم حفظ إعدادات محركات البحث SEO بنجاح في قاعدة البيانات!' : 'SEO settings saved!');
     } catch (err) {
       console.error(err);
+      showToast(lang === 'ar' ? '❌ حدث خطأ أثناء حفظ إعدادات SEO.' : 'Error updating SEO');
     }
   };
+
 
   // 1. IF NOT LOGGED IN: SECURE LOGIN SCREEN (NO VISIBLE CREDENTIALS)
   if (!hasAccess) {
@@ -595,12 +663,17 @@ export const AdminDashboard: React.FC = () => {
                       <td className="py-3 px-4 text-gray-600">{proj.location}</td>
                       <td className="py-3 px-4">
                         {proj.videoUrl ? (
-                          <span className="text-red-600 font-bold flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => openVideoModal(proj.videoUrl!)}
+                            className="text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-xl font-bold flex items-center gap-1.5 transition-colors text-xs border border-red-200 shadow-2xs cursor-pointer"
+                            title={lang === 'ar' ? 'تشغيل ومعاينة الفيديو' : 'Preview Video'}
+                          >
                             <Video className="w-3.5 h-3.5" />
-                            <span>{lang === 'ar' ? 'نعم' : 'Yes'}</span>
-                          </span>
+                            <span>{lang === 'ar' ? 'معاينة الفيديو' : 'Watch'}</span>
+                          </button>
                         ) : (
-                          <span className="text-gray-400">-</span>
+                          <span className="text-gray-400 text-xs">-</span>
                         )}
                       </td>
                       <td className="py-3 px-4">
@@ -625,7 +698,8 @@ export const AdminDashboard: React.FC = () => {
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
                           <button
-                            onClick={() => handleDeleteProject(proj.id)}
+                            onClick={() => setProjectToDelete(proj)}
+                            title={lang === 'ar' ? 'حذف المشروع' : 'Delete project'}
                             className="p-1.5 rounded-lg bg-gray-100 hover:bg-red-600 hover:text-white text-gray-700 transition-colors"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -657,12 +731,39 @@ export const AdminDashboard: React.FC = () => {
                 <label className="block text-xs font-bold text-gray-700 mb-1">
                   {lang === 'ar' ? 'رابط الشعار الرسمي (Logo URL)' : 'Logo Image URL'}
                 </label>
-                <input
-                  type="text"
-                  value={orgLogoUrl}
-                  onChange={(e) => setOrgLogoUrl(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-xs text-gray-900 focus:outline-hidden focus:border-[#0A5C4B]"
-                />
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-12 h-12 rounded-full border border-gray-300 overflow-hidden bg-white shrink-0 flex items-center justify-center p-0.5 shadow-sm">
+                    {orgLogoUrl ? (
+                      <img src={orgLogoUrl} alt="Logo" className="w-full h-full object-contain" />
+                    ) : (
+                      <span className="text-[10px] text-gray-400">لا يوجد</span>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    value={orgLogoUrl}
+                    onChange={(e) => setOrgLogoUrl(e.target.value)}
+                    placeholder="/assets/aistudio/..."
+                    className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-xs text-gray-900 focus:outline-hidden focus:border-[#0A5C4B]"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-1.5 text-[11px]">
+                  <span className="text-gray-500 font-bold self-center text-[10px]">اختيار سريع:</span>
+                  <button
+                    type="button"
+                    onClick={() => setOrgLogoUrl('/assets/aistudio/309211266_404166348563693_8027332630712114535_n__1__bf2c442e.png')}
+                    className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-[#0A5C4B] font-bold border border-emerald-200 transition-colors"
+                  >
+                    الشعار الدائري الرسمي
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOrgLogoUrl('/assets/aistudio/content_7eaea990.png')}
+                    className="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold border border-amber-200 transition-colors"
+                  >
+                    كارت المنظمة الرسمي
+                  </button>
+                </div>
               </div>
 
               <div>
@@ -1330,17 +1431,30 @@ export const AdminDashboard: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">
-                    {lang === 'ar' ? 'رابط الفيديو (YouTube / Vimeo)' : 'Video Link (YouTube / Vimeo)'}
+                    {lang === 'ar' ? 'رابط الفيديو (يوتيوب عادي / شورتس Shorts / فيميو)' : 'Video Link (YouTube / Shorts / Vimeo)'}
                   </label>
-                  <input
-                    type="url"
-                    value={formVideoUrl}
-                    onChange={(e) => setFormVideoUrl(e.target.value)}
-                    placeholder="https://www.youtube.com/watch?v=..."
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-xs text-gray-900 focus:outline-hidden focus:border-[#0A5C4B]"
-                  />
-                  <span className="text-[10px] text-gray-400 mt-0.5 block">
-                    {lang === 'ar' ? 'يحفظ كرابط نصي فقط لتوفير المساحة' : 'Stored as URL only'}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={formVideoUrl}
+                      onChange={(e) => setFormVideoUrl(e.target.value)}
+                      placeholder="https://www.youtube.com/shorts/... أو watch?v=..."
+                      className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-xs text-gray-900 focus:outline-hidden focus:border-[#0A5C4B]"
+                    />
+                    {formVideoUrl.trim() && (
+                      <button
+                        type="button"
+                        onClick={() => openVideoModal(formVideoUrl.trim())}
+                        className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-xl text-xs font-bold flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
+                        title="تجربة ومعاينة الفيديو الآن"
+                      >
+                        <Play className="w-3.5 h-3.5 fill-current" />
+                        <span>معاينة</span>
+                      </button>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-gray-500 mt-1 block">
+                    {lang === 'ar' ? 'يدعم فيديوهات يوتيوب العادية، شورتس (Shorts)، وفيميو ويتم تشغيلها بسلاسة' : 'Supports YouTube, Shorts, and Vimeo links'}
                   </span>
                 </div>
               </div>
@@ -1430,6 +1544,53 @@ export const AdminDashboard: React.FC = () => {
               </div>
 
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE CONFIRMATION MODAL (Reliable in sandboxed iframes) */}
+      {projectToDelete && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-red-100 text-center space-y-5">
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-red-50 text-red-600 flex items-center justify-center shadow-inner">
+              <Trash2 className="w-8 h-8" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold font-cairo text-gray-900">
+                {lang === 'ar' ? 'تأكيد حذف المشروع' : 'Confirm Project Deletion'}
+              </h3>
+              <p className="text-xs text-gray-600 font-cairo leading-relaxed">
+                {lang === 'ar' ? (
+                  <>هل أنت متأكد من رغبتك في حذف المشروع: <strong className="text-red-700 font-bold block mt-1 text-sm">"{projectToDelete.title}"</strong>؟ سيتم حذفه فوراً من قاعدة البيانات والموقع بدون أي تأخير.</>
+                ) : (
+                  <>Are you sure you want to delete <strong className="text-red-700 font-bold block mt-1">"{projectToDelete.title}"</strong>? It will be removed immediately from Firestore.</>
+                )}
+              </p>
+            </div>
+            <div className="flex items-center gap-3 justify-center pt-2">
+              <button
+                type="button"
+                onClick={() => setProjectToDelete(null)}
+                className="px-5 py-2.5 rounded-xl border border-gray-300 font-cairo text-gray-700 hover:bg-gray-100 transition-colors text-xs font-semibold"
+              >
+                {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingProject}
+                onClick={confirmDeleteProject}
+                className="px-6 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-cairo text-xs font-bold shadow-lg shadow-red-600/30 transition-all flex items-center gap-2"
+              >
+                {isDeletingProject ? (
+                  <span>{lang === 'ar' ? 'جاري الحذف...' : 'Deleting...'}</span>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    <span>{lang === 'ar' ? 'نعم، حذف نهائي الآن' : 'Yes, Delete Permanently'}</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

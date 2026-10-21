@@ -27,7 +27,7 @@ import {
   onAuthStateChanged, 
   User 
 } from '../firebase';
-import { generateRefNumber } from '../utils/helpers';
+import { generateRefNumber, cleanFirestoreData } from '../utils/helpers';
 
 interface AppContextType {
   lang: 'ar' | 'en';
@@ -76,7 +76,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const cached = localStorage.getItem(CACHE_PROJECTS_KEY);
       if (cached) return JSON.parse(cached);
     } catch {}
-    return INITIAL_PROJECTS;
+    return [];
   });
 
   const [stats, setStats] = useState<ImpactStats>(() => {
@@ -194,23 +194,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     try {
       const unsub = onSnapshot(collection(db, 'projects'), (snapshot) => {
-        if (!snapshot.empty) {
-          const loadedProjects: Project[] = [];
-          snapshot.forEach((d) => {
-            loadedProjects.push({ id: d.id, ...d.data() } as Project);
-          });
-          setProjects(loadedProjects);
-          try {
-            localStorage.setItem(CACHE_PROJECTS_KEY, JSON.stringify(loadedProjects));
-          } catch {}
-        } else {
-          // If Firestore is empty initially, seed with initial projects so they exist in DB
-          INITIAL_PROJECTS.forEach((proj) => {
-            setDoc(doc(db, 'projects', proj.id), proj, { merge: true }).catch(err => {
-              console.warn('Project seed warning:', err);
-            });
-          });
-        }
+        const loadedProjects: Project[] = [];
+        snapshot.forEach((d) => {
+          loadedProjects.push({ id: d.id, ...d.data() } as Project);
+        });
+        // Sort projects so latest added/updated appears first
+        loadedProjects.sort((a, b) => {
+          const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return timeB - timeA;
+        });
+        setProjects(loadedProjects);
+        try {
+          localStorage.setItem(CACHE_PROJECTS_KEY, JSON.stringify(loadedProjects));
+        } catch {}
       }, (error) => {
         console.warn('Projects listener warning:', error);
       });
@@ -248,9 +245,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updatedAt: new Date().toISOString(),
     };
 
+    const sanitizedPayload = cleanFirestoreData(payload);
+
     // 1. INSTANT STATE & LOCALSTORAGE UPDATE (0ms latency for user)
     setProjects((prev) => {
-      const updated = [payload, ...prev];
+      const updated = [sanitizedPayload, ...prev];
       try {
         localStorage.setItem(CACHE_PROJECTS_KEY, JSON.stringify(updated));
       } catch {}
@@ -259,9 +258,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // 2. SAVE DIRECTLY TO FIRESTORE
     try {
-      await setDoc(doc(db, 'projects', newId), payload);
+      await setDoc(doc(db, 'projects', newId), sanitizedPayload);
+      console.log('Project successfully persisted to Firestore:', newId);
     } catch (error) {
       console.error('Firestore addProject error:', error);
+      throw error;
     }
 
     return newId;
@@ -269,7 +270,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateProject = async (id: string, updates: Partial<Project>): Promise<void> => {
     const timestamp = new Date().toISOString();
-    const mergedUpdates = { ...updates, updatedAt: timestamp };
+    const mergedUpdates = cleanFirestoreData({ ...updates, updatedAt: timestamp });
 
     // 1. INSTANT STATE & LOCALSTORAGE UPDATE
     setProjects((prev) => {
@@ -283,8 +284,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // 2. SAVE DIRECTLY TO FIRESTORE
     try {
       await setDoc(doc(db, 'projects', id), mergedUpdates, { merge: true });
+      console.log('Project successfully updated in Firestore:', id);
     } catch (error) {
       console.error('Firestore updateProject error:', error);
+      throw error;
     }
   };
 
@@ -301,8 +304,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // 2. DELETE DIRECTLY FROM FIRESTORE
     try {
       await deleteDoc(doc(db, 'projects', id));
+      console.log('Project successfully deleted from Firestore:', id);
     } catch (error) {
       console.error('Firestore deleteProject error:', error);
+      throw error;
     }
   };
 
@@ -313,17 +318,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       lastUpdated: new Date().toISOString(),
     };
 
+    const sanitizedStats = cleanFirestoreData(newStats);
+
     // 1. INSTANT STATE & LOCALSTORAGE UPDATE
-    setStats(newStats);
+    setStats(sanitizedStats);
     try {
-      localStorage.setItem(CACHE_STATS_KEY, JSON.stringify(newStats));
+      localStorage.setItem(CACHE_STATS_KEY, JSON.stringify(sanitizedStats));
     } catch {}
 
     // 2. SAVE DIRECTLY TO FIRESTORE (fixed doc: stats/impact_stats)
     try {
-      await setDoc(doc(db, 'stats', 'impact_stats'), newStats, { merge: true });
+      await setDoc(doc(db, 'stats', 'impact_stats'), sanitizedStats, { merge: true });
+      console.log('Impact stats saved to Firestore successfully');
     } catch (error) {
       console.error('Firestore updateStats error:', error);
+      throw error;
     }
   };
 
@@ -333,19 +342,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...updates,
     };
 
+    const sanitizedSettings = cleanFirestoreData(newSettings);
+
     // 1. INSTANT STATE & LOCALSTORAGE UPDATE
-    setSettings(newSettings);
+    setSettings(sanitizedSettings);
     try {
-      localStorage.setItem(CACHE_SETTINGS_KEY, JSON.stringify(newSettings));
+      localStorage.setItem(CACHE_SETTINGS_KEY, JSON.stringify(sanitizedSettings));
     } catch {}
 
     // 2. SAVE DIRECTLY TO FIRESTORE (fixed doc: settings/site_settings)
     try {
-      await setDoc(doc(db, 'settings', 'site_settings'), newSettings, { merge: true });
+      await setDoc(doc(db, 'settings', 'site_settings'), sanitizedSettings, { merge: true });
+      console.log('Site settings saved to Firestore successfully');
     } catch (error) {
       console.error('Firestore updateSettings error:', error);
+      throw error;
     }
   };
+
 
   const addDonation = async (
     data: Omit<Donation, 'id' | 'createdAt' | 'referenceNumber'>

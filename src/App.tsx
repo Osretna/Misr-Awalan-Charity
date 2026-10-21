@@ -11,6 +11,7 @@ import { VideoModal } from './components/VideoModal';
 import { QuickDonateModal } from './components/QuickDonateModal';
 import { DonationReceiptModal } from './components/DonationReceiptModal';
 import { StickyDonateButton } from './components/StickyDonateButton';
+import { SiteProtection } from './components/SiteProtection';
 
 // Pages
 import { HomePage } from './pages/HomePage';
@@ -75,6 +76,9 @@ function MainLayout() {
 
       {/* Sticky Fast Donation & WhatsApp Buttons */}
       <StickyDonateButton />
+
+      {/* Security & Anti-Inspection Protection (F12, Right-Click, DevTools block) */}
+      <SiteProtection />
 
       {/* Interactive Global Modals */}
       <VideoModal />
