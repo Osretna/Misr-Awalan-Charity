@@ -1,0 +1,6 @@
+{
+  "name": "منظمة مصر أولاً | Misr Awalan Charity",
+  "description": "الموقع الرسمي لمنظمة مصر أولاً للتنمية والرعاية الإنسانية - رعاية الأيتام، حفر الآبار، القوافل الطبية وتنمية المجتمع الأكثر احتياجاً.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

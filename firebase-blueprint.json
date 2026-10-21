@@ -1,0 +1,143 @@
+{
+  "entities": {
+    "Project": {
+      "title": "Project",
+      "description": "Charity project or humanitarian initiative",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 200 },
+        "titleEn": { "type": "string", "maxLength": 200 },
+        "category": { "type": "string", "maxLength": 50 },
+        "categoryEn": { "type": "string", "maxLength": 50 },
+        "shortDescription": { "type": "string", "maxLength": 500 },
+        "shortDescriptionEn": { "type": "string", "maxLength": 500 },
+        "fullDescription": { "type": "string", "maxLength": 5000 },
+        "fullDescriptionEn": { "type": "string", "maxLength": 5000 },
+        "coverImage": { "type": "string", "maxLength": 5000 },
+        "videoUrl": { "type": "string", "maxLength": 1000 },
+        "location": { "type": "string", "maxLength": 200 },
+        "targetAmount": { "type": "number" },
+        "raisedAmount": { "type": "number" },
+        "beneficiaries": { "type": "number" },
+        "isFeatured": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["active", "completed", "ongoing"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["title", "category", "shortDescription", "coverImage"]
+    },
+    "Donation": {
+      "title": "Donation",
+      "description": "Donation record from supporters",
+      "type": "object",
+      "properties": {
+        "donorName": { "type": "string", "maxLength": 100 },
+        "donorEmail": { "type": "string", "maxLength": 150 },
+        "donorPhone": { "type": "string", "maxLength": 50 },
+        "amount": { "type": "number" },
+        "currency": { "type": "string", "maxLength": 10 },
+        "campaignId": { "type": "string", "maxLength": 100 },
+        "campaignTitle": { "type": "string", "maxLength": 200 },
+        "type": { "type": "string", "enum": ["one-time", "monthly"] },
+        "paymentMethod": { "type": "string", "maxLength": 50 },
+        "status": { "type": "string", "enum": ["completed", "pending"] },
+        "referenceNumber": { "type": "string", "maxLength": 100 },
+        "isPublic": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["amount", "paymentMethod", "type", "createdAt"]
+    },
+    "Volunteer": {
+      "title": "Volunteer",
+      "description": "Volunteer application submission",
+      "type": "object",
+      "properties": {
+        "fullName": { "type": "string", "maxLength": 150 },
+        "email": { "type": "string", "maxLength": 150 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "city": { "type": "string", "maxLength": 100 },
+        "skills": { "type": "string", "maxLength": 500 },
+        "availability": { "type": "string", "maxLength": 200 },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "status": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["fullName", "phone", "city", "createdAt"]
+    },
+    "ImpactStats": {
+      "title": "ImpactStats",
+      "description": "Aggregated humanitarian impact numbers",
+      "type": "object",
+      "properties": {
+        "familiesHelped": { "type": "number" },
+        "mealsDistributed": { "type": "number" },
+        "orphansSponsored": { "type": "number" },
+        "waterWellsBuilt": { "type": "number" },
+        "medicalConvoys": { "type": "number" },
+        "homesRestored": { "type": "number" },
+        "lastUpdated": { "type": "string" }
+      },
+      "required": ["familiesHelped", "mealsDistributed", "orphansSponsored", "waterWellsBuilt"]
+    },
+    "NewsItem": {
+      "title": "NewsItem",
+      "description": "Updates and news reports",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 250 },
+        "titleEn": { "type": "string", "maxLength": 250 },
+        "summary": { "type": "string", "maxLength": 500 },
+        "summaryEn": { "type": "string", "maxLength": 500 },
+        "content": { "type": "string", "maxLength": 5000 },
+        "contentEn": { "type": "string", "maxLength": 5000 },
+        "imageUrl": { "type": "string", "maxLength": 5000 },
+        "date": { "type": "string", "maxLength": 50 },
+        "category": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["title", "summary", "imageUrl", "date"]
+    },
+    "SiteSettings": {
+      "title": "SiteSettings",
+      "description": "Organization and site configuration",
+      "type": "object",
+      "properties": {
+        "metaTitle": { "type": "string", "maxLength": 200 },
+        "metaDescription": { "type": "string", "maxLength": 500 },
+        "hotline": { "type": "string", "maxLength": 50 },
+        "whatsappNumber": { "type": "string", "maxLength": 50 },
+        "officialEmail": { "type": "string", "maxLength": 150 },
+        "licenseNumber": { "type": "string", "maxLength": 100 },
+        "taxNumber": { "type": "string", "maxLength": 100 },
+        "heroHeadline": { "type": "string", "maxLength": 200 },
+        "heroSubheadline": { "type": "string", "maxLength": 500 }
+      }
+    }
+  },
+  "firestore": {
+    "/projects/{projectId}": {
+      "schema": "Project",
+      "description": "Charity initiatives and field projects"
+    },
+    "/donations/{donationId}": {
+      "schema": "Donation",
+      "description": "Supporter contributions and transactions"
+    },
+    "/volunteers/{volunteerId}": {
+      "schema": "Volunteer",
+      "description": "Volunteer applications"
+    },
+    "/stats/{statId}": {
+      "schema": "ImpactStats",
+      "description": "Real-time impact metrics"
+    },
+    "/news/{newsId}": {
+      "schema": "NewsItem",
+      "description": "Organization news and media releases"
+    },
+    "/settings/{settingId}": {
+      "schema": "SiteSettings",
+      "description": "Global website settings"
+    }
+  }
+}
