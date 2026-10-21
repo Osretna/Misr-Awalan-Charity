@@ -17,7 +17,10 @@ import {
   Printer, 
   Share2, 
   Lock,
-  MessageSquare
+  MessageSquare,
+  UserCheck,
+  Phone,
+  MessageCircle
 } from 'lucide-react';
 
 export const DonatePage: React.FC = () => {
@@ -228,13 +231,14 @@ export const DonatePage: React.FC = () => {
                 4. {lang === 'ar' ? 'طريقة الدفع وقنوات التبرع الرسمية' : 'Select Official Payment Channel'}
               </label>
               
-              <div className="grid grid-cols-2 sm:grid-cols-6 gap-2.5 mb-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5 mb-6">
                 {[
                   { id: 'vodafone_cash', label: 'فودافون كاش', icon: Smartphone, highlight: '*9*240#' },
-                  { id: 'bank_transfer', label: 'تحويل بنكي', icon: Building, highlight: '3 بنوك' },
+                  { id: 'instapay', label: 'InstaPay', icon: QrCode, highlight: 'لحظي' },
+                  { id: 'bank_transfer', label: 'تحويل بنكي', icon: Building, highlight: 'بنك مصر' },
+                  { id: 'representative', label: 'مندوب تحصيل', icon: UserCheck, highlight: 'منزلي' },
                   { id: 'oppay', label: 'OpPay أوباي', icon: Building, highlight: settings.opPayCode },
                   { id: 'sms', label: 'رسالة SMS', icon: MessageSquare, highlight: settings.smsNumber },
-                  { id: 'instapay', label: 'InstaPay', icon: QrCode, highlight: 'لحظي' },
                   { id: 'card', label: 'فيزا / ميزة', icon: CreditCard, highlight: 'أونلاين' },
                 ].map((m) => {
                   const Icon = m.icon;
@@ -267,33 +271,41 @@ export const DonatePage: React.FC = () => {
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-xs font-bold text-rose-700">
                       <Smartphone className="w-4 h-4" />
-                      <span>{lang === 'ar' ? 'فودافون كاش ميجا خير (كود الدفع السريع والمحفظة)' : 'Vodafone Cash MegaKheir'}</span>
+                      <span>{lang === 'ar' ? 'فودافون كاش ومحافظ المحمول (كود التبرع الفوري والمحفظة)' : 'Vodafone Cash & Mobile Wallets'}</span>
                     </div>
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="bg-white p-3.5 rounded-xl border border-gray-200 flex items-center justify-between">
                         <div>
-                          <div className="text-[11px] text-gray-500 font-semibold">{lang === 'ar' ? 'كود ميجا خير السريع:' : 'MegaKheir Code:'}</div>
-                          <div className="font-mono font-bold text-red-600 text-lg">{settings.vodafoneCashCode}</div>
+                          <div className="text-[11px] text-gray-500 font-semibold">{lang === 'ar' ? 'كود التبرع السريع المباشر:' : 'Direct USSD Code:'}</div>
+                          <div className="font-mono font-bold text-red-600 text-lg">{settings.vodafoneCashCode || '*9*240#'}</div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => copyText(settings.vodafoneCashCode, 'vfcode')}
-                          className="px-3 py-1.5 rounded-lg bg-red-50 text-red-700 text-xs font-bold hover:bg-red-100 flex items-center gap-1"
-                        >
-                          {copiedKey === 'vfcode' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                          <span>{copiedKey === 'vfcode' ? 'تم النسخ' : 'نسخ'}</span>
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <a
+                            href="tel:*9*240%23"
+                            className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-bold hover:bg-red-700 flex items-center gap-1 shadow-xs"
+                          >
+                            <Phone className="w-3.5 h-3.5" />
+                            <span>{lang === 'ar' ? 'اتصال الآن' : 'Dial'}</span>
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => copyText(settings.vodafoneCashCode || '*9*240#', 'vfcode')}
+                            className="px-2.5 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-xs font-bold hover:bg-gray-200"
+                          >
+                            {copiedKey === 'vfcode' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
                       </div>
 
                       <div className="bg-white p-3.5 rounded-xl border border-gray-200 flex items-center justify-between">
                         <div>
                           <div className="text-[11px] text-gray-500 font-semibold">{lang === 'ar' ? 'أرقام كاش المباشرة:' : 'Direct Wallet:'}</div>
-                          <div className="font-mono font-bold text-gray-900 text-sm">{settings.phone1}</div>
+                          <div className="font-mono font-bold text-gray-900 text-sm">{settings.phone2 || '01007267403'}</div>
                         </div>
                         <button
                           type="button"
-                          onClick={() => copyText(settings.phone1, 'vfnum')}
+                          onClick={() => copyText(settings.phone2 || '01007267403', 'vfnum')}
                           className="px-3 py-1.5 rounded-lg bg-emerald-50 text-[#0A5C4B] text-xs font-bold hover:bg-emerald-100 flex items-center gap-1"
                         >
                           {copiedKey === 'vfnum' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
@@ -381,19 +393,74 @@ export const DonatePage: React.FC = () => {
                       <QrCode className="w-4 h-4" />
                       <span>{lang === 'ar' ? 'التحويل الفوري عبر شبكة المدفوعات اللحظية (InstaPay)' : 'Instant transfer via InstaPay Egypt'}</span>
                     </div>
-                    <div className="bg-white p-3.5 rounded-xl border border-gray-200 flex items-center justify-between">
-                      <div>
-                        <div className="text-[11px] text-gray-500 font-semibold">{lang === 'ar' ? 'عنوان الدفع اللحظي (IPA):' : 'InstaPay Address:'}</div>
-                        <div className="font-mono font-bold text-gray-900 text-sm">{settings.instaPayAddress}</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="bg-white p-3.5 rounded-xl border border-gray-200 flex items-center justify-between">
+                        <div>
+                          <div className="text-[11px] text-gray-500 font-semibold">{lang === 'ar' ? 'عنوان الدفع اللحظي (IPA):' : 'InstaPay Address:'}</div>
+                          <div className="font-mono font-bold text-gray-900 text-sm">{settings.instaPayAddress || '01007267403@instapay'}</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => copyText(settings.instaPayAddress || '01007267403@instapay', 'ipa')}
+                          className="px-3 py-1.5 rounded-lg bg-emerald-50 text-[#0A5C4B] text-xs font-bold hover:bg-emerald-100 flex items-center gap-1"
+                        >
+                          {copiedKey === 'ipa' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span>{copiedKey === 'ipa' ? 'تم النسخ' : 'نسخ'}</span>
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => copyText(settings.instaPayAddress, 'ipa')}
-                        className="px-3 py-1.5 rounded-lg bg-emerald-50 text-[#0A5C4B] text-xs font-bold hover:bg-emerald-100 flex items-center gap-1"
-                      >
-                        {copiedKey === 'ipa' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                        <span>{copiedKey === 'ipa' ? 'تم النسخ' : 'نسخ'}</span>
-                      </button>
+
+                      <div className="bg-white p-3.5 rounded-xl border border-gray-200 flex items-center justify-between">
+                        <div>
+                          <div className="text-[11px] text-gray-500 font-semibold">{lang === 'ar' ? 'أو تحويل برقم الهاتف المسجل:' : 'Mobile Number:'}</div>
+                          <div className="font-mono font-bold text-gray-900 text-sm">{settings.phone2 || '01007267403'}</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => copyText(settings.phone2 || '01007267403', 'ipa-phone')}
+                          className="px-3 py-1.5 rounded-lg bg-emerald-50 text-[#0A5C4B] text-xs font-bold hover:bg-emerald-100 flex items-center gap-1"
+                        >
+                          {copiedKey === 'ipa-phone' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span>{copiedKey === 'ipa-phone' ? 'تم النسخ' : 'نسخ'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {paymentMethod === 'representative' && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-xs font-bold text-amber-800">
+                      <UserCheck className="w-4 h-4" />
+                      <span>{lang === 'ar' ? 'خدمة التحصيل المنزلي (مندوب يصلك أينما كنت)' : 'Home Collection Representative Service'}</span>
+                    </div>
+                    <div className="bg-white p-4 rounded-xl border border-amber-200 text-xs space-y-3">
+                      <p className="text-gray-700 leading-relaxed">
+                        {lang === 'ar'
+                          ? 'يسعدنا إرسال مندوب رسمي معتمد من الجمعية يحمل هوية رسمية وإيصال استلام ورقي مختوم بختم الجمعية حتى باب منزلك أو مقر عملك.'
+                          : 'An official verified representative with ID and stamped paper receipt will visit you at your door or office.'}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        <a
+                          href={`https://wa.me/${settings.whatsappNumber.replace(/\D/g, '') || '201118150007'}?text=${encodeURIComponent(
+                            lang === 'ar'
+                              ? `السلام عليكم ورحمة الله، أود طلب مندوب تحصيل للتبرع بمبلغ (${amount} ج.م) لصالح مشروع (${projects.find(p => p.id === selectedCampaign)?.title || 'صدقة عامة'}). رقم هاتفي: ${donorPhone || settings.phone1}`
+                              : `Hello, I would like to request a home collection representative for ${amount} EGP.`
+                          )}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-4 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20ba5a] text-white font-bold flex items-center gap-2 shadow-xs transition-colors"
+                        >
+                          <MessageCircle className="w-4 h-4 fill-current" />
+                          <span>{lang === 'ar' ? 'طلب المندوب فوراً عبر واتساب' : 'Request via WhatsApp'}</span>
+                        </a>
+                        <a
+                          href={`tel:${settings.phone1}`}
+                          className="px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold flex items-center gap-2 transition-colors"
+                        >
+                          <Phone className="w-4 h-4" />
+                          <span>{settings.phone1}</span>
+                        </a>
+                      </div>
                     </div>
                   </div>
                 )}

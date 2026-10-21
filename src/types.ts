@@ -31,7 +31,7 @@ export interface Project {
   updatedAt?: string;
 }
 
-export type PaymentMethod = 'instapay' | 'vodafone_cash' | 'fawry' | 'bank_transfer' | 'oppay' | 'sms' | 'card';
+export type PaymentMethod = 'instapay' | 'vodafone_cash' | 'fawry' | 'bank_transfer' | 'oppay' | 'sms' | 'card' | 'representative';
 
 export interface Donation {
   id: string;

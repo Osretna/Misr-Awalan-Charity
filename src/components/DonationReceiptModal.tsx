@@ -11,7 +11,12 @@ import {
   ShieldCheck, 
   Calendar,
   CreditCard,
-  Hash
+  Hash,
+  MessageCircle,
+  ExternalLink,
+  Phone,
+  QrCode,
+  Smartphone
 } from 'lucide-react';
 
 export const DonationReceiptModal: React.FC = () => {
@@ -24,12 +29,39 @@ export const DonationReceiptModal: React.FC = () => {
     window.print();
   };
 
+  const getMethodDisplay = (m: string) => {
+    switch (m) {
+      case 'vodafone_cash':
+        return lang === 'ar' ? 'فودافون كاش ومحافظ المحمول (*9*240#)' : 'Vodafone Cash & Wallets';
+      case 'instapay':
+        return 'إنستاباي (InstaPay)';
+      case 'bank_transfer':
+        return lang === 'ar' ? 'تحويل بنكي رسمي' : 'Bank Transfer';
+      case 'representative':
+        return lang === 'ar' ? 'مندوب تحصيل منزلي' : 'Home Representative';
+      case 'fawry':
+        return lang === 'ar' ? 'فوري (Fawry)' : 'Fawry Network';
+      default:
+        return m.replace('_', ' ').toUpperCase();
+    }
+  };
+
   const shareText = lang === 'ar'
     ? `الحمد لله، تشرفت بالمساهمة في دعم أهالينا عبر منظمة مصر أولاً (${latestDonationReceipt.campaignTitle}) - رقم الإيصال: ${latestDonationReceipt.referenceNumber}. صدقة جارية ترفع البلاء وتصنع الأمل.`
     : `Honored to support Misr Awalan Organization (${latestDonationReceipt.campaignTitle}) - Receipt: ${latestDonationReceipt.referenceNumber}.`;
 
   const handleShare = () => {
     const url = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+    window.open(url, '_blank');
+  };
+
+  const waTarget = settings.whatsappNumber.replace(/\D/g, '') || '201118150007';
+  const confirmationMsg = lang === 'ar'
+    ? `السلام عليكم ورحمة الله، مرفق لكم إشعار تحويل التبرع لصالح منظمة مصر أولاً:\n- المشروع: ${latestDonationReceipt.campaignTitle}\n- المبلغ: ${latestDonationReceipt.amount} جنيه مصري\n- وسيلة الدفع: ${getMethodDisplay(latestDonationReceipt.paymentMethod)}\n- رقم الإيصال المرجعي: ${latestDonationReceipt.referenceNumber}\n- اسم المتبرع: ${latestDonationReceipt.donorName || 'فاعل خير'}\nيرجى تأكيد القيد في السجلات الرسمية وجزاكم الله خيراً.`
+    : `Hello, sending my donation confirmation for Misr Awalan:\n- Ref: ${latestDonationReceipt.referenceNumber}\n- Amount: ${latestDonationReceipt.amount} EGP\n- Campaign: ${latestDonationReceipt.campaignTitle}`;
+
+  const handleSendProofWhatsApp = () => {
+    const url = `https://wa.me/${waTarget}?text=${encodeURIComponent(confirmationMsg)}`;
     window.open(url, '_blank');
   };
 
@@ -131,10 +163,32 @@ export const DonationReceiptModal: React.FC = () => {
                   <CreditCard className="w-3.5 h-3.5 text-gray-400" />
                   {lang === 'ar' ? 'وسيلة الدفع' : 'Payment Method'}
                 </span>
-                <span className="font-bold text-gray-900 block uppercase">
-                  {latestDonationReceipt.paymentMethod.replace('_', ' ')}
+                <span className="font-bold text-gray-900 block">
+                  {getMethodDisplay(latestDonationReceipt.paymentMethod)}
                 </span>
               </div>
+            </div>
+
+            {/* Quick Proof Dispatch Banner */}
+            <div className="p-3.5 bg-emerald-50/80 rounded-xl border border-emerald-200 flex flex-col sm:flex-row items-center justify-between gap-2.5">
+              <div className="text-xs text-emerald-900">
+                <span className="font-bold block">
+                  {lang === 'ar' ? 'لتأكيد قيد التحويل فوراً:' : 'To confirm transfer instantly:'}
+                </span>
+                <span className="text-[11px] text-emerald-700">
+                  {lang === 'ar'
+                    ? 'أرسل لقطة شاشة التحويل للإدارة المالية عبر واتساب مع رقم الإيصال'
+                    : 'Send screenshot with receipt number to finance team via WhatsApp'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleSendProofWhatsApp}
+                className="w-full sm:w-auto px-3.5 py-2 bg-[#25D366] hover:bg-[#20ba5a] text-white rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shrink-0 shadow-xs"
+              >
+                <MessageCircle className="w-4 h-4 fill-current" />
+                <span>{lang === 'ar' ? 'إرسال الإشعار لواتساب' : 'WhatsApp Receipt'}</span>
+              </button>
             </div>
 
             {/* Noble Prayer Quote */}
