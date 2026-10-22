@@ -74,3 +74,27 @@ export function cleanFirestoreData<T>(obj: T): T {
   }
   return obj;
 }
+
+/**
+ * Normalizes phone numbers for standard tel: links
+ */
+export function cleanPhoneForTel(phone: string | undefined): string {
+  if (!phone) return '';
+  return phone.replace(/[^\d+]/g, '');
+}
+
+/**
+ * Converts Egyptian mobile numbers (e.g. 01118150007) to international WhatsApp API format (201118150007)
+ */
+export function cleanPhoneForWhatsApp(phone: string | undefined): string {
+  if (!phone) return '';
+  const cleaned = phone.replace(/[^\d]/g, '');
+  if (/^01[0125]\d{8}$/.test(cleaned)) {
+    return '2' + cleaned;
+  }
+  if (cleaned.startsWith('0') && (cleaned.length === 10 || cleaned.length === 11)) {
+    return '20' + cleaned.substring(1);
+  }
+  return cleaned;
+}
+

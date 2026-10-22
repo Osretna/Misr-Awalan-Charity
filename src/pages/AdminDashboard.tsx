@@ -37,8 +37,13 @@ import {
   QrCode,
   Info,
   Check,
-  Upload
+  Upload,
+  MessageCircle,
+  ExternalLink,
+  Radio
 } from 'lucide-react';
+import { cleanPhoneForTel, cleanPhoneForWhatsApp } from '../utils/helpers';
+
 
 export const AdminDashboard: React.FC = () => {
   const { 
@@ -101,7 +106,9 @@ export const AdminDashboard: React.FC = () => {
   const [licenseNumber, setLicenseNumber] = useState(settings.licenseNumber);
   const [phone1, setPhone1] = useState(settings.phone1);
   const [phone2, setPhone2] = useState(settings.phone2);
+  const [whatsappNumber, setWhatsappNumber] = useState(settings.whatsappNumber || '01118150007');
   const [address, setAddress] = useState(settings.address);
+
   const [officialEmail, setOfficialEmail] = useState(settings.officialEmail);
   const [taxNumber, setTaxNumber] = useState(settings.taxNumber);
 
@@ -146,6 +153,7 @@ export const AdminDashboard: React.FC = () => {
       setLicenseNumber(settings.licenseNumber || '');
       setPhone1(settings.phone1 || '');
       setPhone2(settings.phone2 || '');
+      setWhatsappNumber(settings.whatsappNumber || '');
       setAddress(settings.address || '');
       setOfficialEmail(settings.officialEmail || '');
       setTaxNumber(settings.taxNumber || '');
@@ -366,6 +374,7 @@ export const AdminDashboard: React.FC = () => {
         licenseNumber: licenseNumber.trim(),
         phone1: phone1.trim(),
         phone2: phone2.trim(),
+        whatsappNumber: whatsappNumber.trim(),
         address: address.trim(),
         officialEmail: officialEmail.trim(),
         taxNumber: taxNumber.trim(),
@@ -906,28 +915,171 @@ export const AdminDashboard: React.FC = () => {
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">
-                  {lang === 'ar' ? 'رقم الهاتف الأول (واتساب وتواصل)' : 'Phone 1'}
-                </label>
-                <input
-                  type="text"
-                  value={phone1}
-                  onChange={(e) => setPhone1(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-xs text-gray-900 focus:outline-hidden focus:border-[#0A5C4B]"
-                />
-              </div>
+              {/* Direct Contact Numbers & WhatsApp Manager Card */}
+              <div className="sm:col-span-2 bg-[#041e16] rounded-2xl p-5 border border-[#11543f] text-white space-y-4 shadow-md">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#0d4f3b] pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#f3ba2f] shadow-[0_0_8px_#f3ba2f] animate-pulse"></span>
+                    <h4 className="font-bold text-sm sm:text-base text-white font-cairo">
+                      {lang === 'ar' ? 'إدارة أرقام التواصل المباشر والواتساب (تسمع فورياً في كل الموقع)' : 'Direct Contact & WhatsApp Manager'}
+                    </h4>
+                  </div>
+                  <span className="text-[11px] bg-emerald-500/20 text-emerald-400 font-bold px-2.5 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1 w-fit">
+                    <Radio className="w-3 h-3 animate-pulse" />
+                    <span>مربوط لحظياً بقاعدة البيانات</span>
+                  </span>
+                </div>
 
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">
-                  {lang === 'ar' ? 'رقم الهاتف الثاني' : 'Phone 2'}
-                </label>
-                <input
-                  type="text"
-                  value={phone2}
-                  onChange={(e) => setPhone2(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-xs text-gray-900 focus:outline-hidden focus:border-[#0A5C4B]"
-                />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Phone 1 */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-emerald-200">
+                      {lang === 'ar' ? 'رقم الهاتف الرسمي الأول (الأساسي) *' : 'Official Phone 1 *'}
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        required
+                        value={phone1}
+                        onChange={(e) => setPhone1(e.target.value)}
+                        placeholder="01007267403"
+                        className="w-full bg-[#062c21] border border-[#11543f] focus:border-[#f3ba2f] focus:ring-1 focus:ring-[#f3ba2f] rounded-xl px-3 py-2.5 text-white font-mono text-sm tracking-wider outline-none"
+                        dir="ltr"
+                      />
+                      <Phone className="w-4 h-4 text-[#f3ba2f] absolute end-3 top-3" />
+                    </div>
+                    <span className="text-[10px] text-emerald-400/70 block">
+                      السطر الأول في كرت التواصل
+                    </span>
+                  </div>
+
+                  {/* Phone 2 */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-emerald-200">
+                      {lang === 'ar' ? 'رقم الهاتف الرسمي الثاني *' : 'Official Phone 2 *'}
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={phone2}
+                        onChange={(e) => setPhone2(e.target.value)}
+                        placeholder="01118150007"
+                        className="w-full bg-[#062c21] border border-[#11543f] focus:border-[#f3ba2f] focus:ring-1 focus:ring-[#f3ba2f] rounded-xl px-3 py-2.5 text-white font-mono text-sm tracking-wider outline-none"
+                        dir="ltr"
+                      />
+                      <Phone className="w-4 h-4 text-[#f3ba2f] absolute end-3 top-3" />
+                    </div>
+                    <span className="text-[10px] text-emerald-400/70 block">
+                      السطر الثاني في كرت التواصل
+                    </span>
+                  </div>
+
+                  {/* WhatsApp */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-emerald-200">
+                      {lang === 'ar' ? 'رقم الواتساب المباشر المعتمد *' : 'Official WhatsApp *'}
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        required
+                        value={whatsappNumber}
+                        onChange={(e) => setWhatsappNumber(e.target.value)}
+                        placeholder="01118150007"
+                        className="w-full bg-[#062c21] border border-[#11543f] focus:border-[#25D366] focus:ring-1 focus:ring-[#25D366] rounded-xl px-3 py-2.5 text-white font-mono text-sm tracking-wider outline-none"
+                        dir="ltr"
+                      />
+                      <MessageCircle className="w-4 h-4 text-[#25D366] absolute end-3 top-3" />
+                    </div>
+                    <span className="text-[10px] text-[#25D366] font-mono block" dir="ltr">
+                      +{cleanPhoneForWhatsApp(whatsappNumber)} (الصيغة الدولية)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Live Card Preview & Instant Action Testing */}
+                <div className="pt-3 border-t border-[#0e4b37] grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                  {/* Left: Instant Interactive Testing Buttons */}
+                  <div className="md:col-span-6 space-y-2">
+                    <span className="text-xs font-bold text-emerald-300 block">
+                      {lang === 'ar' ? 'فحص وتجربة الأرقام الجديدة قبل أو بعد الحفظ:' : 'Test Links Execution:'}
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      <a
+                        href={`tel:${cleanPhoneForTel(phone1)}`}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/20 transition-colors"
+                        title="تجربة الاتصال بالرقم الأول"
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                        <span>تجربة الاتصال (1)</span>
+                      </a>
+
+                      <a
+                        href={`tel:${cleanPhoneForTel(phone2)}`}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/20 transition-colors"
+                        title="تجربة الاتصال بالرقم الثاني"
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                        <span>تجربة الاتصال (2)</span>
+                      </a>
+
+                      <a
+                        href={`https://wa.me/${cleanPhoneForWhatsApp(whatsappNumber)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#25D366]/20 text-[#25D366] border border-[#25D366]/40 text-xs font-bold hover:bg-[#25D366]/30 transition-colors"
+                        title="تجربة فتح محادثة الواتساب"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        <span>تجربة واتساب</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Right: Live mini visual card replicating screenshot */}
+                  <div className="md:col-span-6 bg-[#031d14] p-3 rounded-xl border border-[#0d4f3b] text-start">
+                    <div className="text-[10px] text-gray-400 font-bold mb-1.5 flex items-center justify-between">
+                      <span>{lang === 'ar' ? 'شكل الظهور الفعلي في الموقع (معاينة حية):' : 'Live Appearance in Footer/Site:'}</span>
+                      <span className="text-emerald-400 text-[9px]">متزامن لحظياً</span>
+                    </div>
+
+                    <div className="space-y-1.5 text-xs">
+                      <div className="bg-[#062c21] p-2 rounded-lg border border-[#11543f] flex items-center justify-between">
+                        <span className="text-[10px] text-[#34d399] font-bold">الهواتف الرسمية:</span>
+                        <span className="font-mono text-white text-[11px] font-bold" dir="ltr">{phone1 || '01007267403'} - {phone2 || '01118150007'}</span>
+                      </div>
+                      <div className="bg-[#062c21] p-2 rounded-lg border border-[#11543f] flex items-center justify-between">
+                        <span className="text-[10px] text-[#34d399] font-bold">واتساب مباشر:</span>
+                        <span className="font-mono text-white text-[11px] font-bold text-[#25D366]" dir="ltr">{whatsappNumber || '01118150007'}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Save numbers button directly here */}
+                <div className="pt-2 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await updateSettings({
+                          phone1: phone1.trim(),
+                          phone2: phone2.trim(),
+                          whatsappNumber: whatsappNumber.trim(),
+                        });
+                        showToast(lang === 'ar' ? '✅ تم حفظ وتحديث أرقام الاتصال والواتساب في كامل الموقع وقاعدة البيانات فوراً بنجاح!' : 'Numbers saved and applied site-wide!');
+                      } catch (err) {
+                        console.error(err);
+                        showToast(lang === 'ar' ? '❌ حدث خطأ أثناء الحفظ، يرجى المحاولة مرة أخرى' : 'Failed to save numbers');
+                      }
+                    }}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold text-xs flex items-center gap-2 shadow-md transition-all active:scale-98"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>{lang === 'ar' ? 'حفظ وتطبيق أرقام الاتصال والواتساب فوراً' : 'Save & Apply Numbers Now'}</span>
+                  </button>
+                </div>
               </div>
 
               <div className="sm:col-span-2">

@@ -17,6 +17,8 @@ import {
   Smartphone,
   CreditCard
 } from 'lucide-react';
+import { cleanPhoneForTel, cleanPhoneForWhatsApp } from '../utils/helpers';
+
 
 interface FooterProps {
   setCurrentPage: (page: string) => void;
@@ -138,43 +140,67 @@ export const Footer: React.FC<FooterProps> = ({ setCurrentPage }) => {
             </ul>
           </div>
 
-          {/* Column 3: Contact & Direct Channels */}
+          {/* Column 3: Contact & Direct Channels - Matches Exact Screenshot */}
           <div>
             <h4 className="text-base font-bold text-white mb-4 flex items-center gap-2 border-b border-emerald-800/80 pb-2">
-              <span className="w-2 h-2 rounded-full bg-[#C9A227]"></span>
+              <span className="w-2.5 h-2.5 rounded-full bg-[#f3ba2f] inline-block shadow-[0_0_8px_#f3ba2f]"></span>
               <span>{lang === 'ar' ? 'التواصل المباشر' : 'Direct Channels'}</span>
             </h4>
             <div className="space-y-3 text-sm text-emerald-100/90">
-              <div className="p-3 rounded-xl bg-emerald-900/40 border border-emerald-800/40 space-y-2">
-                <div className="text-xs text-emerald-300 font-bold">{lang === 'ar' ? 'أرقام الهواتف الرسمية:' : 'Official Phones:'}</div>
-                <div className="flex flex-col gap-1 font-bold text-white text-sm">
-                  <a href={`tel:${settings.phone1}`} className="hover:text-[#C9A227] flex items-center gap-2">
-                    <Phone className="w-3.5 h-3.5 text-[#C9A227]" />
-                    <span>{settings.phone1}</span>
-                  </a>
-                  <a href={`tel:${settings.phone2}`} className="hover:text-[#C9A227] flex items-center gap-2">
-                    <Phone className="w-3.5 h-3.5 text-[#C9A227]" />
-                    <span>{settings.phone2}</span>
-                  </a>
+              {/* Box 1: Official Phones */}
+              <div className="p-3.5 rounded-2xl bg-[#062c21]/90 border border-[#11543f] space-y-2.5 shadow-sm">
+                <div className="text-xs text-[#34d399] font-bold">{lang === 'ar' ? 'أرقام الهواتف الرسمية:' : 'Official Phones:'}</div>
+                <div className="flex flex-col gap-2 font-bold text-white text-base">
+                  {settings.phone1 && (
+                    <a
+                      href={`tel:${cleanPhoneForTel(settings.phone1)}`}
+                      className="hover:text-[#f3ba2f] flex items-center justify-between group transition-colors"
+                      title="اتصال مباشر"
+                    >
+                      <span className="font-mono tracking-wider text-sm sm:text-base direction-ltr">{settings.phone1}</span>
+                      <Phone className="w-4 h-4 text-[#e6af2e] group-hover:scale-110 transition-transform" />
+                    </a>
+                  )}
+                  {settings.phone2 && (
+                    <a
+                      href={`tel:${cleanPhoneForTel(settings.phone2)}`}
+                      className="hover:text-[#f3ba2f] flex items-center justify-between group transition-colors"
+                      title="اتصال مباشر"
+                    >
+                      <span className="font-mono tracking-wider text-sm sm:text-base direction-ltr">{settings.phone2}</span>
+                      <Phone className="w-4 h-4 text-[#e6af2e] group-hover:scale-110 transition-transform" />
+                    </a>
+                  )}
                 </div>
               </div>
 
-              <a
-                href={`https://wa.me/${settings.whatsappNumber.replace(/\+/g, '')}`}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-3 p-2.5 rounded-xl bg-emerald-900/40 hover:bg-emerald-900/80 transition-colors border border-emerald-800/40"
-              >
-                <div className="p-2 rounded-lg bg-[#25D366] text-white">
-                  <MessageCircle className="w-4 h-4" />
+              {/* Box 2: Direct WhatsApp Box */}
+              <div className="p-3.5 rounded-2xl bg-[#062c21]/90 border border-[#11543f] shadow-sm">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs text-[#34d399] font-bold">
+                    {lang === 'ar' ? 'واتساب مباشر' : strings.whatsapp}
+                  </span>
+                  <a
+                    href={`https://wa.me/${cleanPhoneForWhatsApp(settings.whatsappNumber)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-7 h-7 rounded-lg bg-[#25D366] text-white flex items-center justify-center hover:scale-105 active:scale-95 transition-transform shadow-xs"
+                    title="محادثة واتساب"
+                  >
+                    <MessageCircle className="w-4 h-4 fill-white" />
+                  </a>
                 </div>
-                <div>
-                  <div className="text-xs text-emerald-300">{strings.whatsapp}</div>
-                  <div className="font-bold text-white text-xs dir-ltr">{settings.whatsappNumber}</div>
-                </div>
-              </a>
+                <a
+                  href={`https://wa.me/${cleanPhoneForWhatsApp(settings.whatsappNumber)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-bold text-white hover:text-[#25D366] text-sm sm:text-base font-mono tracking-wider block transition-colors direction-ltr"
+                >
+                  {settings.whatsappNumber}
+                </a>
+              </div>
 
-              <div className="flex items-start gap-2.5 text-xs text-emerald-200">
+              <div className="flex items-start gap-2.5 text-xs text-emerald-200/90 pt-1">
                 <MapPin className="w-4 h-4 text-[#C9A227] shrink-0 mt-0.5" />
                 <span className="leading-relaxed">{settings.address}</span>
               </div>

@@ -13,6 +13,8 @@ import {
   Sparkles,
   MapPin
 } from 'lucide-react';
+import { cleanPhoneForTel } from '../utils/helpers';
+
 
 interface NavbarProps {
   currentPage: string;
@@ -67,7 +69,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, setCurrentPage }) =
           <div className="flex items-center gap-2 sm:gap-3 ms-auto">
             {/* Phone 1 */}
             <a
-              href={`tel:${settings.phone1}`}
+              href={`tel:${cleanPhoneForTel(settings.phone1)}`}
               className="flex items-center gap-1 text-white/90 hover:text-[#E0BA3E] transition-colors"
               title="اتصال مباشر"
             >
@@ -79,7 +81,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, setCurrentPage }) =
 
             {/* Phone 2 */}
             <a
-              href={`tel:${settings.phone2}`}
+              href={`tel:${cleanPhoneForTel(settings.phone2)}`}
               className="hidden sm:flex items-center gap-1 text-white/90 hover:text-[#E0BA3E] transition-colors"
               title="اتصال مباشر"
             >

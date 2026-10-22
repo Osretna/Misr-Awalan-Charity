@@ -2,6 +2,7 @@ import React from 'react';
 import { useApp } from '../context/AppContext';
 import { t } from '../utils/translations';
 import { Heart, MessageCircle, Sparkles } from 'lucide-react';
+import { cleanPhoneForWhatsApp } from '../utils/helpers';
 
 export const StickyDonateButton: React.FC = () => {
   const { setQuickDonateModalOpen, settings, lang } = useApp();
@@ -11,12 +12,13 @@ export const StickyDonateButton: React.FC = () => {
     <>
       {/* WhatsApp Quick Floating Button (Left on RTL, Right on LTR) */}
       <a
-        href={`https://wa.me/${settings.whatsappNumber.replace(/\+/g, '')}?text=${encodeURIComponent(
+        href={`https://wa.me/${cleanPhoneForWhatsApp(settings.whatsappNumber)}?text=${encodeURIComponent(
           lang === 'ar' ? 'السلام عليكم، أود الاستفسار عن التبرع وكفالات منظمة مصر أولاً' : 'Hello, I would like to inquire about donating to Misr Awalan'
         )}`}
         target="_blank"
         rel="noreferrer"
         className="fixed bottom-6 start-6 z-40 flex items-center justify-center w-14 h-14 rounded-full bg-[#25D366] text-white shadow-xl hover:bg-[#20ba5a] hover:scale-110 active:scale-95 transition-all duration-300 group"
+
         aria-label="تواصل عبر واتساب"
         title={strings.whatsapp}
       >

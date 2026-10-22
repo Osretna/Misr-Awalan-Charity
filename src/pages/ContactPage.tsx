@@ -11,6 +11,8 @@ import {
   CheckCircle2, 
   ShieldCheck 
 } from 'lucide-react';
+import { cleanPhoneForTel, cleanPhoneForWhatsApp } from '../utils/helpers';
+
 
 export const ContactPage: React.FC = () => {
   const { lang, settings } = useApp();
@@ -70,11 +72,11 @@ export const ContactPage: React.FC = () => {
                   <span>{lang === 'ar' ? 'أرقام الاتصال المباشر:' : 'Direct Phone Lines:'}</span>
                 </div>
                 <div className="flex flex-col gap-1.5 font-bold text-gray-900 text-sm">
-                  <a href={`tel:${settings.phone1}`} className="hover:text-[#0A5C4B] transition-colors flex items-center justify-between">
+                  <a href={`tel:${cleanPhoneForTel(settings.phone1)}`} className="hover:text-[#0A5C4B] transition-colors flex items-center justify-between">
                     <span>{settings.phone1}</span>
                     <span className="text-[10px] text-gray-500 font-normal">{lang === 'ar' ? 'متاح واتساب وتليفون' : 'WhatsApp & Call'}</span>
                   </a>
-                  <a href={`tel:${settings.phone2}`} className="hover:text-[#0A5C4B] transition-colors flex items-center justify-between">
+                  <a href={`tel:${cleanPhoneForTel(settings.phone2)}`} className="hover:text-[#0A5C4B] transition-colors flex items-center justify-between">
                     <span>{settings.phone2}</span>
                     <span className="text-[10px] text-gray-500 font-normal">{lang === 'ar' ? 'خط ساخن وتنسيق' : 'Hotline'}</span>
                   </a>
@@ -83,7 +85,7 @@ export const ContactPage: React.FC = () => {
 
               {/* WhatsApp direct */}
               <a
-                href={`https://wa.me/${settings.whatsappNumber.replace(/\+/g, '')}`}
+                href={`https://wa.me/${cleanPhoneForWhatsApp(settings.whatsappNumber)}`}
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center gap-3 p-3 rounded-2xl bg-emerald-50/70 border border-emerald-100 hover:bg-emerald-100/70 transition-colors"

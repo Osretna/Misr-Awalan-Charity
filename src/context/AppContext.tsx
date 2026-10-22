@@ -138,17 +138,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // --- FIRESTORE REAL-TIME SYNC ---
 
-  // 1. Sync Settings with Firestore (Document: settings/site_settings)
+  // 1. Sync Settings with Firestore (Document: settings/site_settings) + Multi-tab BroadcastChannel
   useEffect(() => {
+    // BroadcastChannel listener
+    let bc: BroadcastChannel | null = null;
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        bc = new BroadcastChannel('misr_settings_channel');
+        bc.onmessage = (event) => {
+          if (event.data?.type === 'SETTINGS_UPDATED' && event.data.settings) {
+            setSettings(event.data.settings);
+            try {
+              localStorage.setItem(CACHE_SETTINGS_KEY, JSON.stringify(event.data.settings));
+            } catch {}
+          }
+        };
+      }
+    } catch {}
+
+    const handleCustomEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<SiteSettings>;
+      if (customEvent.detail) {
+        setSettings(customEvent.detail);
+      }
+    };
+    window.addEventListener('misr_settings_updated', handleCustomEvent);
+
     try {
       const settingsDocRef = doc(db, 'settings', 'site_settings');
       const unsub = onSnapshot(settingsDocRef, (snapshot) => {
         if (snapshot.exists()) {
-          const remoteData = snapshot.data() as SiteSettings;
-          setSettings(remoteData);
-          try {
-            localStorage.setItem(CACHE_SETTINGS_KEY, JSON.stringify(remoteData));
-          } catch {}
+          const remoteData = snapshot.data() as Partial<SiteSettings>;
+          setSettings((prev) => {
+            const merged = { ...INITIAL_SETTINGS, ...prev, ...remoteData };
+            try {
+              localStorage.setItem(CACHE_SETTINGS_KEY, JSON.stringify(merged));
+            } catch {}
+            return merged;
+          });
         } else {
           // Document does not exist yet in Firestore, initialize it with INITIAL_SETTINGS
           setDoc(settingsDocRef, INITIAL_SETTINGS, { merge: true }).catch(err => {
@@ -158,9 +185,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }, (error) => {
         console.warn('Settings listener fallback:', error);
       });
-      return () => unsub();
+      return () => {
+        unsub();
+        if (bc) bc.close();
+        window.removeEventListener('misr_settings_updated', handleCustomEvent);
+      };
     } catch (e) {
       console.warn(e);
+      return () => {
+        if (bc) bc.close();
+        window.removeEventListener('misr_settings_updated', handleCustomEvent);
+      };
     }
   }, []);
 
@@ -344,11 +379,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const sanitizedSettings = cleanFirestoreData(newSettings);
 
-    // 1. INSTANT STATE & LOCALSTORAGE UPDATE
+    // 1. INSTANT STATE & LOCALSTORAGE UPDATE (Zero Latency)
     setSettings(sanitizedSettings);
     try {
       localStorage.setItem(CACHE_SETTINGS_KEY, JSON.stringify(sanitizedSettings));
     } catch {}
+
+    // Instant multi-tab & component broadcast
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('misr_settings_channel');
+        bc.postMessage({ type: 'SETTINGS_UPDATED', settings: sanitizedSettings });
+        bc.close();
+      }
+    } catch {}
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('misr_settings_updated', { detail: sanitizedSettings }));
+    }
 
     // 2. SAVE DIRECTLY TO FIRESTORE (fixed doc: settings/site_settings)
     try {
