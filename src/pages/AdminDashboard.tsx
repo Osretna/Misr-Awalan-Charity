@@ -36,7 +36,8 @@ import {
   CreditCard,
   QrCode,
   Info,
-  Check
+  Check,
+  Upload
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
@@ -309,6 +310,47 @@ export const AdminDashboard: React.FC = () => {
       showToast(lang === 'ar' ? '❌ حدث خطأ أثناء الحذف.' : 'Failed to delete project');
     } finally {
       setIsDeletingProject(false);
+    }
+  };
+
+  // --- LOGO UPLOAD & PRESET HANDLERS ---
+  const handleLogoFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToast(lang === 'ar' ? '⚠️ يرجى اختيار ملف صورة صالح (PNG, JPG, WEBP, SVG)' : 'Please select a valid image file');
+      return;
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+      showToast(lang === 'ar' ? '⚠️ حجم الصورة كبير، يفضل اختيار صورة أقل من 8 ميجابايت' : 'Image is too large (<8MB)');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const result = reader.result as string;
+      setOrgLogoUrl(result);
+      try {
+        await updateSettings({ logoUrl: result });
+        showToast(lang === 'ar' ? '✅ تم رفع الشعار وتحديثه على كامل الموقع وفي قاعدة البيانات فوراً!' : 'Logo uploaded and updated across site!');
+      } catch (err) {
+        console.error(err);
+        showToast(lang === 'ar' ? '✅ تم تحميل الشعار بنجاح، اضغط حفظ لاعتماده' : 'Logo loaded, please save');
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleApplyPresetLogo = async (presetUrl: string, label: string) => {
+    setOrgLogoUrl(presetUrl);
+    try {
+      await updateSettings({ logoUrl: presetUrl });
+      showToast(lang === 'ar' ? `✅ تم تغيير الشعار إلى (${label}) وتطبيقه على الموقع فوراً!` : `Logo changed to ${label}!`);
+    } catch (err) {
+      console.error(err);
+      showToast(lang === 'ar' ? '✅ تم اختيار الشعار' : 'Logo selected');
     }
   };
 
@@ -727,42 +769,103 @@ export const AdminDashboard: React.FC = () => {
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">
-                  {lang === 'ar' ? 'رابط الشعار الرسمي (Logo URL)' : 'Logo Image URL'}
-                </label>
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-12 h-12 rounded-full border border-gray-300 overflow-hidden bg-white shrink-0 flex items-center justify-center p-0.5 shadow-sm">
-                    {orgLogoUrl ? (
-                      <img src={orgLogoUrl} alt="Logo" className="w-full h-full object-contain" />
-                    ) : (
-                      <span className="text-[10px] text-gray-400">لا يوجد</span>
-                    )}
+              {/* Advanced Logo Customization Card */}
+              <div className="sm:col-span-2 bg-[#F8F5F0] rounded-2xl p-4 sm:p-5 border border-emerald-900/10 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-200/80 pb-3">
+                  <div>
+                    <span className="text-sm font-bold text-[#0A5C4B] block font-cairo">
+                      {lang === 'ar' ? 'شعار المنظمة الرسمي (Logo Manager)' : 'Official Organization Logo'}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {lang === 'ar' 
+                        ? 'يمكنك رفع صورة الشعار مباشرة من جهازك، أو اختيار أحد الشعارات المعتمدة، ويظهر كصورة واحدة نقية في رأس الموقع'
+                        : 'Upload logo from your device, or choose from presets. It displays as a single clean image'}
+                    </span>
                   </div>
-                  <input
-                    type="text"
-                    value={orgLogoUrl}
-                    onChange={(e) => setOrgLogoUrl(e.target.value)}
-                    placeholder="/assets/aistudio/..."
-                    className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-xs text-gray-900 focus:outline-hidden focus:border-[#0A5C4B]"
-                  />
+                  <div className="flex items-center gap-2">
+                    <label
+                      htmlFor="admin-logo-upload"
+                      className="cursor-pointer inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#0A5C4B] hover:bg-[#074336] text-white text-xs font-bold transition-all shadow-xs hover:scale-102"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{lang === 'ar' ? 'رفع صورة من جهازك' : 'Upload from device'}</span>
+                    </label>
+                    <input
+                      id="admin-logo-upload"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoFileUpload}
+                      className="hidden"
+                    />
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-1.5 text-[11px]">
-                  <span className="text-gray-500 font-bold self-center text-[10px]">اختيار سريع:</span>
-                  <button
-                    type="button"
-                    onClick={() => setOrgLogoUrl('/assets/aistudio/309211266_404166348563693_8027332630712114535_n__1__bf2c442e.png')}
-                    className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-[#0A5C4B] font-bold border border-emerald-200 transition-colors"
-                  >
-                    الشعار الدائري الرسمي
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setOrgLogoUrl('/assets/aistudio/content_7eaea990.png')}
-                    className="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold border border-amber-200 transition-colors"
-                  >
-                    كارت المنظمة الرسمي
-                  </button>
+
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                  {/* Live Preview Box */}
+                  <div className="md:col-span-4 bg-white p-3 rounded-xl border border-gray-200 flex flex-col items-center justify-center text-center">
+                    <span className="text-[10px] text-gray-400 font-bold mb-2">
+                      {lang === 'ar' ? 'المعاينة الحالية للشعار:' : 'Current Logo Preview:'}
+                    </span>
+                    <div className="h-20 w-full flex items-center justify-center p-2 bg-gray-50/70 rounded-lg border border-dashed border-gray-200">
+                      {orgLogoUrl ? (
+                        <img
+                          src={orgLogoUrl}
+                          alt="Logo Preview"
+                          className="max-h-full max-w-full object-contain drop-shadow-xs"
+                        />
+                      ) : (
+                        <span className="text-xs text-gray-400">لا يوجد شعار محدد</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* URL and Preset Selection */}
+                  <div className="md:col-span-8 space-y-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                        {lang === 'ar' ? 'مسار أو رابط الشعار الحالي:' : 'Current Logo URL / Path:'}
+                      </label>
+                      <input
+                        type="text"
+                        value={orgLogoUrl}
+                        onChange={(e) => setOrgLogoUrl(e.target.value)}
+                        placeholder="/assets/aistudio/... أو https://..."
+                        className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-mono text-gray-900 focus:outline-hidden focus:border-[#0A5C4B]"
+                      />
+                    </div>
+
+                    <div>
+                      <span className="text-[11px] font-bold text-gray-600 block mb-1.5">
+                        {lang === 'ar' ? 'الشعارات المعتمدة الجاهزة (تطبيق بنقرة واحدة):' : 'Official Preset Logos:'}
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleApplyPresetLogo('/assets/aistudio/WhatsApp_Image_2026-10-21_at_4.23.45_PM_d601961f.jpeg', 'اللافته والشعار الجديد')}
+                          className="px-3 py-1.5 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-xs border border-amber-300 transition-colors flex items-center gap-1.5"
+                        >
+                          <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                          <span>الشعار الجديد (اللافته)</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleApplyPresetLogo('/assets/aistudio/309211266_404166348563693_8027332630712114535_n__1__bf2c442e.png', 'الشعار الدائري الرسمي')}
+                          className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-[#0A5C4B] font-bold text-xs border border-emerald-200 transition-colors"
+                        >
+                          الشعار الدائري الرسمي (علم مصر)
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleApplyPresetLogo('/assets/aistudio/content_7eaea990.png', 'كارت المنظمة والترخيص')}
+                          className="px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs border border-gray-200 transition-colors"
+                        >
+                          كارت ترخيص 417
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 

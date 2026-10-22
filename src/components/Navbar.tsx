@@ -119,12 +119,12 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, setCurrentPage }) =
       <nav className="glass-nav bg-white/95 border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
-            {/* Logo */}
+            {/* Logo - Single Image as requested with zero extra text */}
             <button
               onClick={() => handleNavClick('home')}
-              className="focus:outline-hidden text-start"
+              className="focus:outline-hidden text-start py-1"
             >
-              <Logo size="md" lang={lang} />
+              <Logo size="lg" showText={false} />
             </button>
 
             {/* Desktop Navigation Links */}

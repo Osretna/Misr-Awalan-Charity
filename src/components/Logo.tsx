@@ -11,32 +11,32 @@ interface LogoProps {
 export const Logo: React.FC<LogoProps> = ({
   className = '',
   size = 'md',
-  showText = true,
+  showText = false,
   lang = 'ar',
 }) => {
   const { settings } = useApp();
 
   const sizeMap = {
-    sm: 'w-10 h-10',
-    md: 'w-14 h-14',
-    lg: 'w-20 h-20',
-    xl: 'w-28 h-28',
+    sm: 'h-10 max-w-[140px]',
+    md: 'h-14 max-w-[220px]',
+    lg: 'h-14 sm:h-16 max-w-[280px]',
+    xl: 'h-20 sm:h-24 max-w-[360px]',
   };
 
   const currentLogo = settings?.logoUrl || '/assets/aistudio/309211266_404166348563693_8027332630712114535_n__1__bf2c442e.png';
 
   return (
     <div className={`inline-flex items-center gap-3 ${className}`}>
-      {/* Official Circular Logo */}
-      <div className={`relative shrink-0 ${sizeMap[size]}`}>
+      {/* Official Logo Image (Adaptable to circular or rectangular banners) */}
+      <div className={`relative shrink-0 flex items-center justify-center ${sizeMap[size]}`}>
         <img
           src={currentLogo}
           alt={settings?.orgNameAr || 'منظمة مصر أولاً'}
-          className="w-full h-full object-contain drop-shadow-md rounded-full transition-transform duration-300 hover:rotate-3 bg-white"
+          className="h-full w-auto max-w-full object-contain drop-shadow-xs transition-transform duration-300 hover:scale-[1.02] rounded-lg"
         />
       </div>
 
-      {/* Accompanying Title and Slogan */}
+      {/* Optional Accompanying Text (Hidden by default as requested) */}
       {showText && (
         <div className="flex flex-col text-start">
           <div className="flex items-center gap-1.5">
